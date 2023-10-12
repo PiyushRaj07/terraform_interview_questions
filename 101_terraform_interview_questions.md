@@ -71,6 +71,51 @@
 
 
 
+1. Define the outputs you want to share in the outputs.tf file of Folder A:
+```
+output "example_output" {
+  value = "some_value"
+}
+```
+
+2. Configure a backend for Folder A in its backend.tf file to store the state remotely, for example in an S3 bucket:
+```
+terraform {
+  backend "s3" {
+    bucket = "your-bucket-name"
+    key    = "folder_a/terraform.tfstate"
+    region = "us-west-2" # Specify the appropriate region
+  }
+}
+```
+Make sure to adjust the bucket, key, and region according to your setup.
+
+3. Run `terraform init` and `terraform apply` in Folder A to provision the resources and store the state in the configured backend.
+
+4. In Folder B's main.tf, use a data block to fetch the outputs from Folder A:
+```
+data "terraform_remote_state" "folder_a" {
+  backend = "s3"
+  config = {
+    bucket = "your-bucket-name"
+    key    = "folder_a/terraform.tfstate"
+    region = "us-west-2" # Specify the appropriate region
+  }
+}
+```
+
+5. Use the fetched outputs in Folder B's resources, for example:
+```
+resource "example_resource_in_folder_b" {
+  value_from_folder_a = data.terraform_remote_state.folder_a.outputs.example_output
+  # Other resource configuration in Folder B
+}
+```
+Make sure to replace `example_resource_in_folder_b` and `value_from_folder_a` with actual resource names and output values you want to use in Folder B.
+
+6. Run `terraform init` and `terraform apply` in Folder B to provision resources that utilize the outputs from Folder A.
+
+By following these steps, you can easily share outputs between different Terraform folders.dependencies and resource provisioning based on the outputs of another Terraform configuration.
 ##
 #### 9. Why would you need "data" resources in Terraform?
 
@@ -189,7 +234,34 @@
 #### 24. Can a module call another module?
 
    Answer: Yes, it is not recommended
+As of my last knowledge update in September 2021 (Terraform 0.15.x), calling one module from another within the same configuration is not directly supported by Terraform. Instead, Terraform modules are designed to be self-contained, reusable units that can be called from the root configuration or other modules. They usually don't directly call other modules.
 
+However, you can achieve a similar result by having a higher-level module or the root configuration call multiple lower-level modules. Each module should handle a specific concern or set of resources.
+
+For example, in the following code snippet:
+
+```
+module "database" {
+  source = "./modules/database"
+  # Configuration for the database module
+}
+
+module "app" {
+  source = "./modules/app"
+  # Configuration for the app module
+}
+
+module "network" {
+  source = "./modules/network"
+  # Configuration for the network module
+}
+```
+
+The root configuration is calling three modules: database, app, and network. Each module can represent a distinct set of resources or functionality and can be reused across various configurations.
+
+If you need to share outputs from one module with another, you can define outputs in the module and use them as inputs in other modules or the root configuration.
+
+If you find a strong need to encapsulate the logic of one module within another, you might want to reconsider the design and break it down into smaller, more reusable modules.potentially refactor your modules to better align with Terraform's design principles and best practices.
 
 ##
 #### 25. Why do we need terraform.tfvars file?
