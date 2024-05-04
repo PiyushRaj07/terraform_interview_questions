@@ -781,9 +781,97 @@ If you find a strong need to encapsulate the logic of one module within another,
 #### 101. What if you do not want terraform apply to ask for your permission before deploying resources?
 
     Answer: terraform apply --auto-approve
+##
+#### 102: What are provisioner in terraform
+    Answer: You can use provisioners to model specific actions on the local machine or on a remote machine in order to prepare servers or other infrastructure objects for service.
+
+https://developer.hashicorp.com/terraform/language/resources/provisioners/syntax
+
+resource "aws_instance" "web" {
+  # ...
+
+  provisioner "local-exec" {
+    command = "echo The server's IP address is ${self.private_ip}"
+  }
+}
+
+Most provisioners require access to the remote resource via SSH or WinRM
+   # Copies the file as the root user using SSH
+provisioner "file" {
+  source      = "conf/myapp.conf"
+  destination = "/etc/myapp.conf"
+
+  connection {
+    type     = "ssh"
+    user     = "root"
+    password = "${var.root_password}"
+    host     = "${var.host}"
+  }
+}          
+The file provisioner copies files or directories from the machine running Terraform to the newly created resource. The file provisioner supports both ssh and winrm type connections.
+
+## File Provisioner
+The file provisioner is used to copy files or directories from the machine executing Terraform to the newly created resource. The file provisioner supports both ssh and winrm type connections.
+
+let's modify instance.tf file to use file provisioner. and also create a readme.md file with any content because we are going to copy that file to remote instance.
 
 
-             
+resource "aws_instance" "web" {
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = var.instance_type
+  key_name               = aws_key_pair.key-tf.key_name
+  vpc_security_group_ids = ["${aws_security_group.allow_tls.id}"]
+  tags = {
+    Name = "first-tf-instance"
+  }
+  user_data = file("${path.module}/script.sh")
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    private_key = file("${path.module}/id_rsa")
+    host        = self.public_ip
+  }
+  # file, local-exec, remote-exec
+  provisioner "file" {
+    source      = "readme.md"      # terraform machine
+    destination = "/tmp/readme.md" # remote machine
+  }
+  provisioner "file" {
+    content     = "this is test content" # terraform machine
+    destination = "/tmp/content.md"      # remote machine
+  }
+}
+## local-exec Provisioner
+The local-exec provisioner invokes a local executable after a resource is created. This invokes a process on the machine running Terraform, not on the resource
+resource "aws_instance" "web" {
+  # ...
+
+  provisioner "local-exec" {
+    command = "echo ${self.private_ip} >> private_ips.txt"
+  }
+}
+
+## remote-exec Provisioner
+The remote-exec provisioner invokes a script on a remote resource after it is created
+resource "aws_instance" "web" {
+  # ...
+
+  # Establishes connection to be used by all
+  # generic remote provisioners (i.e. file/remote-exec)
+  connection {
+    type     = "ssh"
+    user     = "root"
+    password = var.root_password
+    host     = self.public_ip
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "puppet apply",
+      "consul join ${aws_instance.web.private_ip}",
+    ]
+  }
+}
 
                                        Terraform Interview Questions
 
