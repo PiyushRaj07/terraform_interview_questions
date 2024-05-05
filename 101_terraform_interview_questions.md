@@ -872,6 +872,19 @@ resource "aws_instance" "web" {
     ]
   }
 }
+#### 102: What are can function in terraform
+can evaluates the given expression and returns a boolean value indicating whether the expression produced a result without any errors.
+
+
+#### 102: What are precedence of variable in terraform
+Terraform loads variables in the following order, with later sources taking precedence over earlier ones:
+
+Environment variables
+The terraform.tfvars file, if present.
+The terraform.tfvars.json file, if present.
+Any *.auto.tfvars or *.auto.tfvars.json files, processed in lexical order of their filenames.
+Any -var and -var-file options on the command line, in the order they are provided. (This includes variables set by an HCP Terraform workspace.)
+
 
                                        Terraform Interview Questions
 
